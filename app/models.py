@@ -4,6 +4,8 @@ from flask.ext.login import UserMixin, AnonymousUserMixin
 from flask import current_app
 from flask_login import UserMixin
 from . import db, login_manager
+from hashlib
+from flask import request
 
 class Permission:
     FOLLOW = 0x01
@@ -56,7 +58,8 @@ class User(UserMixin, db.Model):
     about_me = db.Column(db.Text())
     member_since = db.Column(db.DateTime(),default = datetime.utcnow)
     last_seen = db.Column(db.DateTime(),default = datetime.utcnow)
-    
+    avatar_hash = db.Column(db.String(32))
+
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
         if self.role is None:
@@ -64,7 +67,9 @@ class User(UserMixin, db.Model):
                 self.role = Role.query.filter_by(permissions=0xff).first()
             if self.role is None:
                 self.role = Role.query.filter_by(default=True).first()
-                
+        if self.email is not None and self.avatar_hash is None:
+            self.avatar_hash = hashlib.md5(self.email.encode('utf-8')).hexdigest()
+
     def generate_confirmation_token(self,expiration = 3600):
         s = Serializer(current_app.config['SECRET_KEY'],expiration)
         return s.dumps({'confirm':self.id})
@@ -103,7 +108,35 @@ class User(UserMixin, db.Model):
     def ping(self):
         self.last_seen = datetime.utcnow()
         db.session.add(self) 
-        
+    
+    def gravator(self, size=100, default='identicon', rating='g'):
+        if request.is_secure:
+            url = 'https://secure.gravator.com/avatar'
+        else:
+            url = 'https://www.gravatar.com/avatar'
+        hash = hashlib.md5(self.email.encode('utf-8')).hexdigest()
+        return '{url}/{hash}?s={size}&d={default}&r={rating}'.format(
+            url=url, hash=hash, size=size, default=default, rating=rating)
+   
+    def change_email(self, token):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except:
+            return False
+        if data.get('change_email') != self.id:
+            return False
+        new_email = data.get('new_email')
+        if new_email is None:
+            return False
+        if self.query.filter_by(email=new_email).first() is not None:
+            return False
+        self.email = new_email
+        self.avatar_hash = hashlib.md5(
+            self.email.encode('utf-8')).hexdigest()
+        db.session.add(self)
+        return True
+    
     def __repr__(self):
         return '<User %r>' % self.username
         
