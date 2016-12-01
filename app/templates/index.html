@@ -1,6 +1,38 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% import "_marcos.html" as marcos %}
+
 Hello,
 {% if current_user.is_authenticated %}
     {{ current_user.username}}
 {% else %}
     Stranger
 {% endif %}!
+
+<div>
+    {% if current_user.can(Permission.WRITE_ARTICLES) %}
+    {{ wtf.quick_form(form) }}
+    {% endif %}
+</div>
+<ul class="post">
+    {% for post in posts %}
+    <li class="post">
+        <div class="post-thumbnail">
+            <a href="{{ url_for('.user', username=post.author.username)}}">
+                <img class="img-rounded profile-thumbnail"
+                    src="{{ post.author.gravatar(size=40) }}">
+            </a>
+        </div>
+        <div class="post-date">
+            {{ moment(post.timetamp).fromNow() }}
+        </div>
+        <div class="post-author">
+            <a href="{{ url_for('.user', username=post.author.username) }}">
+            </a>
+        </div>
+        <div class="post-body">
+            {{ post.body }}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
