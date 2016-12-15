@@ -9,6 +9,11 @@ Hello,
     Stranger
 {% endif %}!
 
+{% block scripts %}
+{{ super() }}
+{{ pagedown.include_pagedown() }}
+{% endblock %}
+
 <div>
     {% if current_user.can(Permission.WRITE_ARTICLES) %}
     {{ wtf.quick_form(form) }}

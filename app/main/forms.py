@@ -1,3 +1,4 @@
+from flask_pagedown.fields import PageDownField
 class EditProfileForm(Form):
 	name = StringField('Real name', validators=[length(0,64)])
 	location = StringField('Location', validators=[length(0,64)])
